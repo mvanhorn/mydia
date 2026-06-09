@@ -67,6 +67,13 @@ defmodule MydiaWeb.AdminComponents do
       >
         Media Servers
       </.tab_link>
+      <.tab_link
+        active={@active_tab == :path_mappings}
+        to="/admin/config/path-mappings"
+        icon="hero-arrows-right-left"
+      >
+        Path Mappings
+      </.tab_link>
       <%= if @remote_access_enabled do %>
         <.tab_link
           active={@active_tab == :remote_access}

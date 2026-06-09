@@ -385,7 +385,10 @@
             phx-update="stream"
             class="list bg-base-100 rounded-box shadow-lg"
           >
-            <li class="hidden only:block p-6 text-center text-base-content/50">
+            <li
+              id="no-unmatched-downloads"
+              class="hidden only:block p-6 text-center text-base-content/50"
+            >
               No unmatched downloads
             </li>
             <li
@@ -514,7 +517,10 @@
             phx-update="stream"
             class="list bg-base-100 rounded-box shadow-lg"
           >
-            <li class="hidden only:block p-6 text-center text-base-content/50">
+            <li
+              id="no-unresolved-files"
+              class="hidden only:block p-6 text-center text-base-content/50"
+            >
               No unresolved files
             </li>
             <li
@@ -627,7 +633,10 @@
             <% end %>
           </div>
           <ul id="other-issues" phx-update="stream" class="list bg-base-100 rounded-box shadow-lg">
-            <li class="hidden only:block p-6 text-center text-base-content/50">
+            <li
+              id="no-other-issues"
+              class="hidden only:block p-6 text-center text-base-content/50"
+            >
               No other issues
             </li>
             <li :for={{id, download} <- @streams.other_issues} id={id} class="list-row py-2">
@@ -668,6 +677,52 @@
                       <span class="text-error">Removed from client</span>
                   <% end %>
                 </div>
+                <%= if download.import_failure_reason == "path_mapping_mismatch" do %>
+                  <div class="mt-2 rounded-lg border border-warning/40 bg-warning/5 p-2 text-xs">
+                    <div class="opacity-70">
+                      Mydia can't see the download client's path. This usually means its
+                      volume isn't mounted into the Mydia container at the same path.
+                    </div>
+                    <%= if download.path_mapping_suggestion do %>
+                      <div class="mt-1 font-mono text-[11px] break-all">
+                        {download.path_mapping_suggestion.remote_prefix}
+                        <span class="opacity-50">→</span>
+                        {download.path_mapping_suggestion.local_prefix}
+                      </div>
+                      <div class="mt-2 flex items-center gap-2">
+                        <button
+                          type="button"
+                          id={"apply-mapping-#{download.id}"}
+                          class="btn btn-warning btn-xs"
+                          phx-click="apply_mapping_and_retry"
+                          phx-value-remote_prefix={download.path_mapping_suggestion.remote_prefix}
+                          phx-value-local_prefix={download.path_mapping_suggestion.local_prefix}
+                          phx-disable-with="Applying…"
+                          aria-label={"Apply mapping #{download.path_mapping_suggestion.remote_prefix} to #{download.path_mapping_suggestion.local_prefix} and retry"}
+                        >
+                          Apply mapping &amp; retry
+                        </button>
+                        <%= if download.path_mapping_affected_count do %>
+                          <span class="opacity-60">
+                            Retries {download.path_mapping_affected_count} download{if download.path_mapping_affected_count ==
+                                                                                         1,
+                                                                                       do: "",
+                                                                                       else: "s"}
+                          </span>
+                        <% end %>
+                      </div>
+                    <% else %>
+                      <div class="mt-2">
+                        <.link
+                          navigate={~p"/admin/config/path-mappings"}
+                          class="link link-warning"
+                        >
+                          Add a path mapping
+                        </.link>
+                      </div>
+                    <% end %>
+                  </div>
+                <% end %>
               </div>
               <div class="flex gap-1">
                 <%= if download.import_last_error do %>

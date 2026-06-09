@@ -123,6 +123,14 @@ defmodule Mydia.Downloads do
   defdelegate update_download(download, attrs), to: Mydia.Downloads.History
 
   @doc """
+  Lists failed path-mapping-mismatch downloads whose reported path is at or under
+  the given remote prefix (the apply-mapping fan-out set).
+  """
+  @spec list_path_mapping_mismatches_under_prefix(String.t()) :: [Download.t()]
+  defdelegate list_path_mapping_mismatches_under_prefix(remote_prefix),
+    to: Mydia.Downloads.History
+
+  @doc """
   Marks a download as completed by storing the completion time.
   """
   @spec mark_download_completed(Download.t()) ::

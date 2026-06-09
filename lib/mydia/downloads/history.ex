@@ -103,6 +103,24 @@ defmodule Mydia.Downloads.History do
     end
   end
 
+  @doc """
+  Lists failed downloads classified as a path-mapping mismatch whose reported
+  path is at or under `remote_prefix`. Used to fan out an applied mapping to
+  every affected download.
+  """
+  def list_path_mapping_mismatches_under_prefix(remote_prefix) when is_binary(remote_prefix) do
+    like_pattern = remote_prefix <> "/%"
+
+    Download
+    |> where([d], not is_nil(d.import_failed_at))
+    |> where([d], d.import_failure_reason == "path_mapping_mismatch")
+    |> where(
+      [d],
+      d.import_reported_path == ^remote_prefix or like(d.import_reported_path, ^like_pattern)
+    )
+    |> Repo.all()
+  end
+
   def mark_download_completed(%Download{} = download) do
     download
     |> Download.changeset(%{completed_at: DateTime.utc_now()})
@@ -308,6 +326,8 @@ defmodule Mydia.Downloads.History do
       imported_at: download.imported_at,
       import_retry_count: download.import_retry_count,
       import_last_error: download.import_last_error,
+      import_failure_reason: download.import_failure_reason,
+      import_reported_path: download.import_reported_path,
       import_next_retry_at: download.import_next_retry_at,
       import_failed_at: download.import_failed_at,
       last_progress_at: download.last_progress_at,
@@ -352,6 +372,8 @@ defmodule Mydia.Downloads.History do
       imported_at: download.imported_at,
       import_retry_count: download.import_retry_count,
       import_last_error: download.import_last_error,
+      import_failure_reason: download.import_failure_reason,
+      import_reported_path: download.import_reported_path,
       import_next_retry_at: download.import_next_retry_at,
       import_failed_at: download.import_failed_at,
       last_progress_at: download.last_progress_at,
@@ -408,6 +430,8 @@ defmodule Mydia.Downloads.History do
       imported_at: download.imported_at,
       import_retry_count: download.import_retry_count,
       import_last_error: download.import_last_error,
+      import_failure_reason: download.import_failure_reason,
+      import_reported_path: download.import_reported_path,
       import_next_retry_at: download.import_next_retry_at,
       import_failed_at: download.import_failed_at,
       last_progress_at: download.last_progress_at,

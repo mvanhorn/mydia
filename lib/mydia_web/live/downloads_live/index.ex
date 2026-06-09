@@ -281,6 +281,43 @@ defmodule MydiaWeb.DownloadsLive.Index do
     end
   end
 
+  def handle_event(
+        "apply_mapping_and_retry",
+        %{"remote_prefix" => remote_prefix, "local_prefix" => local_prefix},
+        socket
+      ) do
+    # Persisting a global mapping affects all future imports, so this requires
+    # admin rights — matching the Path Mappings admin page — even though
+    # single-download retries only need manage-downloads.
+    with :ok <-
+           Authorization.authorize(
+             socket,
+             &Mydia.Accounts.Authorization.is_admin?/1,
+             "Admin access required to add a path mapping"
+           ) do
+      case Mydia.Settings.create_path_mapping_config(%{
+             remote_prefix: remote_prefix,
+             local_prefix: local_prefix
+           }) do
+        {:ok, mapping} ->
+          count = retry_mismatches_under_prefix(mapping.remote_prefix)
+
+          {:noreply,
+           socket
+           |> put_flash(
+             :info,
+             "Mapping added. Retrying #{count} affected download#{if count == 1, do: "", else: "s"}."
+           )
+           |> load_downloads()}
+
+        {:error, %Ecto.Changeset{} = changeset} ->
+          {:noreply, put_flash(socket, :error, mapping_error_message(changeset))}
+      end
+    else
+      {:unauthorized, socket} -> {:noreply, socket}
+    end
+  end
+
   def handle_event("retry_import", %{"id" => id}, socket) do
     with :ok <- Authorization.authorize_manage_downloads(socket) do
       download = Downloads.get_download!(id, preload: [:media_item, :episode])
@@ -862,10 +899,12 @@ defmodule MydiaWeb.DownloadsLive.Index do
     unresolved = Enum.filter(all_downloads, fn d -> d.match_status == "unresolved_files" end)
 
     other =
-      Enum.filter(all_downloads, fn d ->
+      all_downloads
+      |> Enum.filter(fn d ->
         (d.status in ["failed", "missing"] || not is_nil(d.import_failed_at)) and
           d.match_status not in ["unmatched", "unresolved_files"]
       end)
+      |> enrich_path_mapping_suggestions()
 
     counts = %{
       unmatched: length(unmatched),
@@ -893,6 +932,89 @@ defmodule MydiaWeb.DownloadsLive.Index do
     |> stream(:unmatched_downloads, unmatched, reset: true)
     |> stream(:unresolved_downloads, unresolved, reset: true)
     |> stream(:other_issues, other, reset: true)
+  end
+
+  # Re-enqueue every failed mismatch download whose reported path is under the
+  # applied prefix, clearing its import-failure fields. Oban uniqueness keyed on
+  # download_id skips any import already in flight. Returns the count.
+  defp retry_mismatches_under_prefix(remote_prefix) do
+    downloads = Downloads.list_path_mapping_mismatches_under_prefix(remote_prefix)
+
+    Enum.each(downloads, fn download ->
+      case Downloads.update_download(download, %{
+             import_retry_count: 0,
+             import_last_error: nil,
+             import_failure_reason: nil,
+             import_reported_path: nil,
+             import_next_retry_at: nil,
+             import_failed_at: nil
+           }) do
+        {:ok, updated} ->
+          %{
+            "download_id" => updated.id,
+            "save_path" => nil,
+            "cleanup_client" => true,
+            "use_hardlinks" => true,
+            "move_files" => false
+          }
+          # MediaImport declares worker-level uniqueness keyed on download_id,
+          # so an import already queued/running for this download is not
+          # double-enqueued.
+          |> Mydia.Jobs.MediaImport.new()
+          |> Oban.insert()
+
+        {:error, _changeset} ->
+          :ok
+      end
+    end)
+
+    length(downloads)
+  end
+
+  defp mapping_error_message(changeset) do
+    case changeset.errors[:remote_prefix] do
+      {_msg, [{:constraint, :unique} | _]} ->
+        "A mapping for this path already exists. Edit it on the Path Mappings page."
+
+      _ ->
+        "Couldn't add the mapping: " <>
+          (Ecto.Changeset.traverse_errors(changeset, fn {msg, _} -> msg end)
+           |> Enum.map_join("; ", fn {field, msgs} -> "#{field} #{Enum.join(msgs, ", ")}" end))
+    end
+  end
+
+  # For downloads classified as a path-mapping mismatch, compute a suggested
+  # remote→local mapping (from the persisted reported path) and the number of
+  # downloads a one-click apply would re-run. Mount roots are detected once for
+  # the whole batch.
+  defp enrich_path_mapping_suggestions(downloads) do
+    if Enum.any?(downloads, &(&1.import_failure_reason == "path_mapping_mismatch")) do
+      roots = Mydia.Library.MountRoots.detect()
+
+      Enum.map(downloads, fn d ->
+        if d.import_failure_reason == "path_mapping_mismatch" and
+             is_binary(d.import_reported_path) do
+          suggestion =
+            case Mydia.Library.PathMapping.suggest(d.import_reported_path, roots) do
+              {:ok, mapping} -> mapping
+              :none -> nil
+            end
+
+          affected =
+            if suggestion do
+              length(
+                Downloads.list_path_mapping_mismatches_under_prefix(suggestion.remote_prefix)
+              )
+            end
+
+          %{d | path_mapping_suggestion: suggestion, path_mapping_affected_count: affected}
+        else
+          d
+        end
+      end)
+    else
+      downloads
+    end
   end
 
   defp submit_match(socket, media_item_id, episode_id) do

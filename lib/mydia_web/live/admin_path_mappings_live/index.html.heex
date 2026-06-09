@@ -1,0 +1,22 @@
+<Layouts.app {assigns}>
+  <div>
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+      <div>
+        <h1 class="text-3xl font-bold">Configuration</h1>
+        <p class="text-base-content/70 mt-1">
+          System status, application settings, and configuration management
+        </p>
+      </div>
+    </div>
+
+    <MydiaWeb.AdminComponents.tab_nav active_tab={@active_tab} />
+
+    <div class="bg-base-100">
+      <MydiaWeb.AdminPathMappingsLive.Components.path_mappings_tab path_mappings={@path_mappings} />
+    </div>
+
+    <%= if @show_modal do %>
+      <MydiaWeb.AdminPathMappingsLive.Components.path_mapping_modal form={@form} mode={@mode} />
+    <% end %>
+  </div>
+</Layouts.app>

@@ -192,6 +192,7 @@ defmodule MydiaWeb.Router do
       live "/config/indexers", AdminIndexersLive.Index, :index
       live "/config/library-paths", AdminLibraryPathsLive.Index, :index
       live "/config/media-servers", AdminMediaServersLive.Index, :index
+      live "/config/path-mappings", AdminPathMappingsLive.Index, :index
       live "/config/remote-access", AdminRemoteAccessLive.Index, :index
       live "/import-lists", AdminImportListsLive.Index, :index
       live "/jobs", JobsLive.Index, :index
