@@ -7,6 +7,8 @@ defmodule Mydia.Config.Schema do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias Mydia.Settings.PathMappingConfig
+
   @primary_key false
 
   @type t :: %__MODULE__{
@@ -448,7 +450,66 @@ defmodule Mydia.Config.Schema do
   defp path_mapping_changeset(schema, attrs) do
     schema
     |> cast(attrs, [:remote_prefix, :local_prefix])
+    |> update_change(:remote_prefix, &PathMappingConfig.normalize_prefix/1)
+    |> update_change(:local_prefix, &PathMappingConfig.normalize_prefix/1)
     |> validate_required([:remote_prefix, :local_prefix])
+    |> validate_path_mapping_absolute(:remote_prefix)
+    |> validate_path_mapping_absolute(:local_prefix)
+    |> validate_path_mapping_no_traversal(:remote_prefix)
+    |> validate_path_mapping_no_traversal(:local_prefix)
+    |> validate_path_mapping_remote_prefix_specific()
+    |> validate_path_mapping_distinct_prefixes()
+  end
+
+  defp validate_path_mapping_absolute(changeset, field) do
+    case get_field(changeset, field) do
+      "/" <> _ -> changeset
+      nil -> changeset
+      _ -> add_error(changeset, field, "must be an absolute path (start with /)")
+    end
+  end
+
+  defp validate_path_mapping_no_traversal(changeset, field) do
+    case get_field(changeset, field) do
+      value when is_binary(value) ->
+        if ".." in Path.split(value) do
+          add_error(changeset, field, "must not contain '..' segments")
+        else
+          changeset
+        end
+
+      _ ->
+        changeset
+    end
+  end
+
+  defp validate_path_mapping_remote_prefix_specific(changeset) do
+    case get_field(changeset, :remote_prefix) do
+      value when is_binary(value) ->
+        if length(Path.split(value)) < 3 do
+          add_error(
+            changeset,
+            :remote_prefix,
+            "must be at least two path segments deep (e.g. /downloads/complete)"
+          )
+        else
+          changeset
+        end
+
+      _ ->
+        changeset
+    end
+  end
+
+  defp validate_path_mapping_distinct_prefixes(changeset) do
+    remote = get_field(changeset, :remote_prefix)
+    local = get_field(changeset, :local_prefix)
+
+    if not is_nil(remote) and remote == local do
+      add_error(changeset, :local_prefix, "must differ from the remote prefix")
+    else
+      changeset
+    end
   end
 
   defp validate_oidc_config(changeset) do

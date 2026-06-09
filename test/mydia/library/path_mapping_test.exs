@@ -37,6 +37,13 @@ defmodule Mydia.Library.PathMappingTest do
       # "/downloads/complete-other" is not under "/downloads/complete/"
       assert PathMapping.rewrite("/downloads/complete-other/x") == "/downloads/complete-other/x"
     end
+
+    test "does not rewrite when path expansion escapes into a sibling local prefix" do
+      mapping("/downloads/complete", "/data/a")
+
+      assert PathMapping.rewrite("/downloads/complete/../ab/file.mkv") ==
+               "/downloads/complete/../ab/file.mkv"
+    end
   end
 
   describe "mount_mismatch?/1" do

@@ -567,7 +567,13 @@ defmodule Mydia.Jobs.MediaImport do
   end
 
   defp list_files_in_path(path) do
+    path_stat = File.stat(path)
+    parent_stat = File.stat(Path.dirname(path))
+
     cond do
+      stat_eacces?(path_stat) or stat_eacces?(parent_stat) ->
+        {:error, {:path_not_accessible, path}}
+
       File.exists?(path) ->
         if File.dir?(path) do
           files = list_files_recursive(path)
@@ -597,6 +603,9 @@ defmodule Mydia.Jobs.MediaImport do
     _e in File.Error ->
       {:error, {:path_not_accessible, path}}
   end
+
+  defp stat_eacces?({:error, :eacces}), do: true
+  defp stat_eacces?(_), do: false
 
   defp list_files_recursive(dir) do
     File.ls!(dir)

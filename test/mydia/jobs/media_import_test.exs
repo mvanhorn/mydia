@@ -760,6 +760,52 @@ defmodule Mydia.Jobs.MediaImportTest do
       assert is_nil(updated.import_next_retry_at)
       assert updated.import_last_error =~ "Download path is not accessible"
     end
+
+    @tag :tmp_dir
+    @tag skip: @running_as_root and "chmod 000 does not restrict root; parent stays accessible"
+    test "classifies a missing leaf under an inaccessible parent as path_not_accessible",
+         %{tmp_dir: tmp_dir} do
+      media_item =
+        media_item_fixture(%{type: "movie", title: "Restricted Parent Movie", year: 2024})
+
+      {:ok, _} =
+        Settings.create_download_client_config(%{
+          name: "RestrictedParentTerminalClient",
+          type: :qbittorrent,
+          host: "nonexistent.invalid",
+          port: 9999,
+          username: "test",
+          password: "test",
+          enabled: true,
+          priority: 1
+        })
+
+      restricted_parent = Path.join(tmp_dir, "restricted-parent")
+      File.mkdir_p!(restricted_parent)
+      File.chmod!(restricted_parent, 0o000)
+      on_exit(fn -> File.chmod!(restricted_parent, 0o755) end)
+
+      missing_leaf = Path.join(restricted_parent, "missing-leaf")
+
+      download =
+        download_fixture(%{
+          media_item_id: media_item.id,
+          status: "completed",
+          completed_at: DateTime.utc_now(),
+          download_client: "RestrictedParentTerminalClient",
+          download_client_id: "restricted-parent-terminal"
+        })
+
+      assert {:cancel, {:path_not_accessible, ^missing_leaf}} =
+               perform_job(
+                 MediaImport,
+                 %{
+                   "download_id" => download.id,
+                   "save_path" => missing_leaf
+                 },
+                 attempt: 3
+               )
+    end
   end
 
   # Helper functions

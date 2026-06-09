@@ -991,27 +991,42 @@ defmodule MydiaWeb.DownloadsLive.Index do
     if Enum.any?(downloads, &(&1.import_failure_reason == "path_mapping_mismatch")) do
       roots = Mydia.Library.MountRoots.detect()
 
-      Enum.map(downloads, fn d ->
-        if d.import_failure_reason == "path_mapping_mismatch" and
-             is_binary(d.import_reported_path) do
-          suggestion =
-            case Mydia.Library.PathMapping.suggest(d.import_reported_path, roots) do
-              {:ok, mapping} -> mapping
-              :none -> nil
-            end
+      {enriched, _affected_cache} =
+        Enum.map_reduce(downloads, %{}, fn d, affected_cache ->
+          if d.import_failure_reason == "path_mapping_mismatch" and
+               is_binary(d.import_reported_path) do
+            suggestion =
+              case Mydia.Library.PathMapping.suggest(d.import_reported_path, roots) do
+                {:ok, mapping} -> mapping
+                :none -> nil
+              end
 
-          affected =
-            if suggestion do
-              length(
-                Downloads.list_path_mapping_mismatches_under_prefix(suggestion.remote_prefix)
-              )
-            end
+            {affected, affected_cache} =
+              if suggestion do
+                Map.get_and_update(affected_cache, suggestion.remote_prefix, fn
+                  nil ->
+                    count =
+                      length(
+                        Downloads.list_path_mapping_mismatches_under_prefix(suggestion.remote_prefix)
+                      )
 
-          %{d | path_mapping_suggestion: suggestion, path_mapping_affected_count: affected}
-        else
-          d
-        end
-      end)
+                    {count, count}
+
+                  count ->
+                    {count, count}
+                end)
+              else
+                {nil, affected_cache}
+              end
+
+            {%{d | path_mapping_suggestion: suggestion, path_mapping_affected_count: affected},
+             affected_cache}
+          else
+            {d, affected_cache}
+          end
+        end)
+
+      enriched
     else
       downloads
     end

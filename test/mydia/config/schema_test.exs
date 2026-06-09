@@ -337,6 +337,44 @@ defmodule Mydia.Config.SchemaTest do
 
       assert changeset.valid?
     end
+
+    test "normalizes and accepts valid path mapping runtime config entries" do
+      attrs = %{
+        path_mappings: [
+          %{
+            remote_prefix: "/downloads/complete/",
+            local_prefix: "/data/torrents/complete/"
+          }
+        ]
+      }
+
+      changeset = Schema.changeset(%Schema{}, attrs)
+
+      assert changeset.valid?
+
+      [mapping_changeset] = Ecto.Changeset.get_change(changeset, :path_mappings)
+      assert Ecto.Changeset.get_change(mapping_changeset, :remote_prefix) == "/downloads/complete"
+      assert Ecto.Changeset.get_change(mapping_changeset, :local_prefix) == "/data/torrents/complete"
+    end
+
+    test "validates path mapping runtime config entries with DB-equivalent rules" do
+      attrs = %{
+        path_mappings: [
+          %{
+            remote_prefix: "/downloads",
+            local_prefix: "/data/../etc"
+          }
+        ]
+      }
+
+      changeset = Schema.changeset(%Schema{}, attrs)
+
+      refute changeset.valid?
+      [mapping_errors] = errors_on(changeset).path_mappings
+      assert "must not contain '..' segments" in mapping_errors.local_prefix
+
+      assert "must be at least two path segments deep (e.g. /downloads/complete)" in mapping_errors.remote_prefix
+    end
   end
 
   describe "defaults/0" do
