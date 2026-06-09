@@ -11,7 +11,8 @@ defmodule Mydia.Settings.RuntimeConfig do
     DownloadClientConfig,
     IndexerConfig,
     MediaServerConfig,
-    LibraryPath
+    LibraryPath,
+    PathMappingConfig
   }
 
   ## Configuration Settings (Database)
@@ -203,6 +204,17 @@ defmodule Mydia.Settings.RuntimeConfig do
     if is_struct(runtime_config) and Map.has_key?(runtime_config, :media_servers) do
       runtime_config.media_servers
       |> Enum.map(&map_to_media_server_config/1)
+    else
+      []
+    end
+  end
+
+  def get_runtime_path_mappings do
+    runtime_config = get_runtime_config()
+
+    if is_struct(runtime_config) and Map.has_key?(runtime_config, :path_mappings) do
+      runtime_config.path_mappings
+      |> Enum.map(&map_to_path_mapping/1)
     else
       []
     end
@@ -403,6 +415,23 @@ defmodule Mydia.Settings.RuntimeConfig do
       url: Map.get(map, :url),
       token: Map.get(map, :token),
       connection_settings: Map.get(map, :connection_settings, %{}),
+      updated_by_id: nil,
+      inserted_at: nil,
+      updated_at: nil
+    }
+  end
+
+  defp map_to_path_mapping(map) when is_map(map) do
+    # Build the synthetic id from the NORMALIZED remote prefix so it round-trips
+    # with the same value the merge keys on — otherwise an env mapping with a
+    # trailing slash could not be resolved by `get_path_mapping_config!/1`.
+    remote_prefix = PathMappingConfig.normalize_prefix(Map.get(map, :remote_prefix))
+    local_prefix = PathMappingConfig.normalize_prefix(Map.get(map, :local_prefix))
+
+    %PathMappingConfig{
+      id: build_runtime_id(:path_mapping, remote_prefix),
+      remote_prefix: remote_prefix,
+      local_prefix: local_prefix,
       updated_by_id: nil,
       inserted_at: nil,
       updated_at: nil

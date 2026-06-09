@@ -41,7 +41,8 @@ defmodule Mydia.Settings do
     DownloadClientConfig,
     IndexerConfig,
     MediaServerConfig,
-    LibraryPath
+    LibraryPath,
+    PathMappingConfig
   }
 
   # ── Quality Profiles ─────────────────────────────────────────────────
@@ -442,6 +443,42 @@ defmodule Mydia.Settings do
   @spec delete_download_client_config(DownloadClientConfig.t()) ::
           {:ok, DownloadClientConfig.t()} | {:error, Ecto.Changeset.t()}
   defdelegate delete_download_client_config(config), to: Mydia.Settings.ServiceConfigs
+
+  # ── Path Mappings ────────────────────────────────────────────────────
+
+  @doc """
+  Lists remote→local path mappings from the database and env, merged and sorted
+  longest-prefix-first.
+  """
+  @spec list_path_mapping_configs(keyword()) :: [PathMappingConfig.t()]
+  defdelegate list_path_mapping_configs(opts \\ []), to: Mydia.Settings.ServiceConfigs
+
+  @doc """
+  Gets a path mapping by database UUID or runtime identifier.
+  """
+  @spec get_path_mapping_config!(binary(), keyword()) :: PathMappingConfig.t()
+  defdelegate get_path_mapping_config!(id, opts \\ []), to: Mydia.Settings.ServiceConfigs
+
+  @doc """
+  Creates a path mapping and refreshes the runtime config.
+  """
+  @spec create_path_mapping_config(map()) ::
+          {:ok, PathMappingConfig.t()} | {:error, Ecto.Changeset.t()}
+  defdelegate create_path_mapping_config(attrs), to: Mydia.Settings.ServiceConfigs
+
+  @doc """
+  Updates a path mapping and refreshes the runtime config.
+  """
+  @spec update_path_mapping_config(PathMappingConfig.t(), map()) ::
+          {:ok, PathMappingConfig.t()} | {:error, Ecto.Changeset.t()}
+  defdelegate update_path_mapping_config(config, attrs), to: Mydia.Settings.ServiceConfigs
+
+  @doc """
+  Deletes a path mapping and refreshes the runtime config.
+  """
+  @spec delete_path_mapping_config(PathMappingConfig.t()) ::
+          {:ok, PathMappingConfig.t()} | {:error, Ecto.Changeset.t()}
+  defdelegate delete_path_mapping_config(config), to: Mydia.Settings.ServiceConfigs
 
   @doc """
   Lists all indexer configurations.

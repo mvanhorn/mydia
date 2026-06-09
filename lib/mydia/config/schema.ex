@@ -23,7 +23,8 @@ defmodule Mydia.Config.Schema do
           download_clients: [__MODULE__.DownloadClient.t()],
           indexers: [__MODULE__.Indexer.t()],
           media_servers: [__MODULE__.MediaServer.t()],
-          library_paths: [__MODULE__.LibraryPath.t()]
+          library_paths: [__MODULE__.LibraryPath.t()],
+          path_mappings: [__MODULE__.PathMapping.t()]
         }
 
   embedded_schema do
@@ -168,6 +169,11 @@ defmodule Mydia.Config.Schema do
       field :scan_interval, :integer, default: 3600
       field :quality_profile_id, :integer
     end
+
+    embeds_many :path_mappings, PathMapping, on_replace: :delete, primary_key: false do
+      field :remote_prefix, :string
+      field :local_prefix, :string
+    end
   end
 
   @doc """
@@ -191,6 +197,7 @@ defmodule Mydia.Config.Schema do
     |> cast_embed(:indexers, with: &indexer_changeset/2)
     |> cast_embed(:media_servers, with: &media_server_changeset/2)
     |> cast_embed(:library_paths, with: &library_path_changeset/2)
+    |> cast_embed(:path_mappings, with: &path_mapping_changeset/2)
     |> validate_configuration()
   end
 
@@ -438,6 +445,12 @@ defmodule Mydia.Config.Schema do
     |> validate_number(:quality_profile_id, greater_than: 0)
   end
 
+  defp path_mapping_changeset(schema, attrs) do
+    schema
+    |> cast(attrs, [:remote_prefix, :local_prefix])
+    |> validate_required([:remote_prefix, :local_prefix])
+  end
+
   defp validate_oidc_config(changeset) do
     oidc_enabled = get_field(changeset, :oidc_enabled)
 
@@ -513,7 +526,8 @@ defmodule Mydia.Config.Schema do
       download_clients: [],
       indexers: [],
       media_servers: [],
-      library_paths: []
+      library_paths: [],
+      path_mappings: []
     }
 
     # Run through changeset to apply defaults from field definitions

@@ -150,7 +150,8 @@ defmodule Mydia.Config.Loader do
       download_clients: load_download_clients_env(),
       indexers: load_indexers_env(),
       media_servers: load_media_servers_env(),
-      library_paths: load_library_paths_env()
+      library_paths: load_library_paths_env(),
+      path_mappings: load_path_mappings_env()
     }
     |> remove_empty_maps()
   end
@@ -423,6 +424,35 @@ defmodule Mydia.Config.Loader do
     |> Enum.reject(&(&1 == %{}))
   end
 
+  defp load_path_mappings_env do
+    # Support environment variables for path mappings in the format:
+    # PATH_MAPPING_<N>_REMOTE, PATH_MAPPING_<N>_LOCAL
+    # where N is 1, 2, 3, etc.
+    env_vars = System.get_env()
+
+    # Find all path mapping indices by looking for *_REMOTE vars
+    indices =
+      env_vars
+      |> Enum.filter(fn {key, _value} ->
+        String.starts_with?(key, "PATH_MAPPING_") and String.ends_with?(key, "_REMOTE")
+      end)
+      |> Enum.map(fn {key, _value} ->
+        key
+        |> String.replace_prefix("PATH_MAPPING_", "")
+        |> String.replace_suffix("_REMOTE", "")
+      end)
+      |> Enum.uniq()
+
+    Enum.map(indices, fn index ->
+      prefix = "PATH_MAPPING_#{index}_"
+
+      %{}
+      |> put_if_present(:remote_prefix, System.get_env("#{prefix}REMOTE"))
+      |> put_if_present(:local_prefix, System.get_env("#{prefix}LOCAL"))
+    end)
+    |> Enum.reject(&(&1 == %{}))
+  end
+
   defp put_if_present(map, _key, nil, _parser), do: map
   defp put_if_present(map, _key, "", _parser), do: map
 
@@ -503,8 +533,8 @@ defmodule Mydia.Config.Loader do
   defp deep_merge(left, right) when is_map(left) and is_map(right) do
     Map.merge(left, right, fn key, left_val, right_val ->
       cond do
-        # For download_clients, indexers, media_servers, and library_paths, merge lists (env entries are appended)
-        key in [:download_clients, :indexers, :media_servers, :library_paths] and
+        # For the service-config lists, merge lists (env entries are appended)
+        key in [:download_clients, :indexers, :media_servers, :library_paths, :path_mappings] and
           is_list(left_val) and
             is_list(right_val) ->
           left_val ++ right_val
