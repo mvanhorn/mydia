@@ -22,6 +22,8 @@ defmodule Mydia.Downloads.Download do
           imported_at: DateTime.t() | nil,
           import_retry_count: integer(),
           import_last_error: String.t() | nil,
+          import_failure_reason: String.t() | nil,
+          import_reported_path: String.t() | nil,
           import_next_retry_at: DateTime.t() | nil,
           import_failed_at: DateTime.t() | nil,
           last_progress_at: DateTime.t() | nil,
@@ -49,6 +51,12 @@ defmodule Mydia.Downloads.Download do
     field :imported_at, :utc_datetime
     field :import_retry_count, :integer, default: 0
     field :import_last_error, :string
+    # Structured failure classification (e.g. "path_mapping_mismatch") so the
+    # Issues tab can filter without parsing the human `import_last_error` string.
+    field :import_failure_reason, :string
+    # The client-reported path Mydia could not see, persisted so the Issues tab
+    # can compute a path-mapping suggestion after the job has finished.
+    field :import_reported_path, :string
     field :import_next_retry_at, :utc_datetime
     field :import_failed_at, :utc_datetime
 
@@ -97,6 +105,8 @@ defmodule Mydia.Downloads.Download do
       :imported_at,
       :import_retry_count,
       :import_last_error,
+      :import_failure_reason,
+      :import_reported_path,
       :import_next_retry_at,
       :import_failed_at,
       :last_progress_at,

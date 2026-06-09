@@ -187,6 +187,10 @@ defmodule Mydia.Jobs.MediaImport do
   # that hasn't finished moving files yet — so they get a small budget of
   # retries before we give up.
   defp terminal_failure?(:no_importable_files, _attempt), do: true
+  # A path-mapping mismatch cannot self-heal by retrying — only an operator
+  # applying a mapping resolves it — so go terminal immediately instead of
+  # burning the retry budget (and flooding telemetry) across three attempts.
+  defp terminal_failure?({:path_mapping_mismatch, _path}, _attempt), do: true
   defp terminal_failure?({:path_not_found, _path}, attempt) when attempt >= 3, do: true
   defp terminal_failure?({:path_not_accessible, _path}, attempt) when attempt >= 3, do: true
   defp terminal_failure?(_reason, _attempt), do: false
@@ -277,7 +281,7 @@ defmodule Mydia.Jobs.MediaImport do
           )
 
           if args.save_path && args.save_path != "" do
-            case list_files_in_path(args.save_path) do
+            case list_files_in_path(mapped_path(args.save_path, download.id)) do
               {:ok, files} when files != [] ->
                 Logger.info("Found files via save_path fallback",
                   download_id: download.id,
@@ -530,7 +534,9 @@ defmodule Mydia.Jobs.MediaImport do
     case Client.get_status(client_info.adapter, client_info.config, client_info.client_id) do
       {:ok, status} ->
         if status.save_path && status.save_path != "" do
-          list_files_in_path(status.save_path)
+          status.save_path
+          |> mapped_path(download.id)
+          |> list_files_in_path()
         else
           Logger.warning("No save_path in status", download_id: download.id)
           {:error, :no_save_path}
@@ -538,6 +544,25 @@ defmodule Mydia.Jobs.MediaImport do
 
       {:error, error} ->
         {:error, error}
+    end
+  end
+
+  # Apply configured remote→local path mappings before touching the filesystem,
+  # logging the rewrite when one applies so the original and mapped paths are
+  # both visible in the import logs.
+  defp mapped_path(reported_path, download_id) do
+    case Mydia.Library.PathMapping.rewrite(reported_path) do
+      ^reported_path ->
+        reported_path
+
+      mapped ->
+        Logger.info("Applied path mapping",
+          download_id: download_id,
+          reported_path: reported_path,
+          mapped_path: mapped
+        )
+
+        mapped
     end
   end
 
@@ -558,11 +583,15 @@ defmodule Mydia.Jobs.MediaImport do
           |> then(&{:ok, &1})
         end
 
+      # Parent directory is visible but the leaf is gone — a genuinely missing
+      # or deleted file. Keep the existing message.
       File.exists?(Path.dirname(path)) ->
         {:error, {:path_not_found, path}}
 
+      # Even the immediate parent isn't visible inside Mydia's filesystem — this
+      # is the container volume mount-mismatch signature, not a deleted file.
       true ->
-        {:error, {:path_not_found, path}}
+        {:error, {:path_mapping_mismatch, path}}
     end
   rescue
     _e in File.Error ->
@@ -1549,6 +1578,8 @@ defmodule Mydia.Jobs.MediaImport do
     attrs = %{
       import_retry_count: attempt,
       import_last_error: error_message,
+      import_failure_reason: failure_reason_tag(reason),
+      import_reported_path: failure_reported_path(reason),
       import_next_retry_at: next_retry_at,
       import_failed_at: import_failed_at
     }
@@ -1582,6 +1613,18 @@ defmodule Mydia.Jobs.MediaImport do
     end
   end
 
+  # Structured failure classification persisted alongside the human message, so
+  # the Issues tab can filter (e.g. on "path_mapping_mismatch") without parsing
+  # prose.
+  defp failure_reason_tag({tag, _path}) when is_atom(tag), do: Atom.to_string(tag)
+  defp failure_reason_tag(tag) when is_atom(tag), do: Atom.to_string(tag)
+  defp failure_reason_tag(_), do: nil
+
+  # The client-reported path Mydia could not see, persisted for path-bearing
+  # failures so the Issues tab can compute a mapping suggestion later.
+  defp failure_reported_path({_tag, path}) when is_binary(path), do: path
+  defp failure_reported_path(_), do: nil
+
   # Format error messages with actionable context for users
   defp format_import_error(:no_client, download) do
     client_name = download.download_client || "Unknown"
@@ -1601,6 +1644,12 @@ defmodule Mydia.Jobs.MediaImport do
     "No files found in download location. " <>
       "The download may have been moved, deleted, or is still extracting. " <>
       "Import will retry automatically."
+  end
+
+  defp format_import_error({:path_mapping_mismatch, path}, _download) do
+    "Mydia can't access the download path: #{path}. " <>
+      "This usually means the download client's volume isn't mounted into the " <>
+      "Mydia container at the same path. Add a path mapping or fix the mount."
   end
 
   defp format_import_error({:path_not_found, path}, _download) do

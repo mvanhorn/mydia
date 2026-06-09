@@ -622,7 +622,8 @@ defmodule Mydia.Jobs.MediaImportTest do
     end
 
     @tag :tmp_dir
-    test "returns error when save_path points to non-existent path", %{tmp_dir: _tmp_dir} do
+    test "classifies a path with no visible parent as a mapping mismatch and goes terminal",
+         %{tmp_dir: _tmp_dir} do
       media_item =
         media_item_fixture(%{type: "movie", title: "Bad Path Movie", year: 2024})
 
@@ -647,17 +648,24 @@ defmodule Mydia.Jobs.MediaImportTest do
           download_client_id: "test123"
         })
 
-      assert {:error, {:path_not_found, "/no/such/path/exists"}} =
+      # Neither the leaf nor its parent are visible -> mount mismatch, terminal
+      # on the first attempt (returns :cancel, not :error).
+      assert {:cancel, {:path_mapping_mismatch, "/no/such/path/exists"}} =
                perform_job(MediaImport, %{
                  "download_id" => download.id,
                  "save_path" => "/no/such/path/exists"
                })
 
       updated = Mydia.Downloads.get_download!(download.id)
-      assert updated.import_last_error =~ "Download path not found"
+      assert updated.import_last_error =~ "can't access the download path"
+      assert updated.import_failure_reason == "path_mapping_mismatch"
+      assert updated.import_reported_path == "/no/such/path/exists"
     end
 
-    test "cancels missing path after the third attempt and clears retry metadata" do
+    @tag :tmp_dir
+    test "cancels missing path after the third attempt and clears retry metadata", %{
+      tmp_dir: tmp_dir
+    } do
       media_item =
         media_item_fixture(%{type: "movie", title: "Bad Path Movie", year: 2024})
 
@@ -682,12 +690,17 @@ defmodule Mydia.Jobs.MediaImportTest do
           download_client_id: "missing-path-terminal"
         })
 
-      assert {:cancel, {:path_not_found, "/no/such/path/exists"}} =
+      # A deleted leaf whose parent directory IS visible stays :path_not_found
+      # (a genuinely missing file), which retries up to three times before
+      # going terminal.
+      missing_leaf = Path.join(tmp_dir, "missing-leaf")
+
+      assert {:cancel, {:path_not_found, ^missing_leaf}} =
                perform_job(
                  MediaImport,
                  %{
                    "download_id" => download.id,
-                   "save_path" => "/no/such/path/exists"
+                   "save_path" => missing_leaf
                  },
                  attempt: 3
                )
