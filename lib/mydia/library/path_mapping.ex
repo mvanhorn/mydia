@@ -7,7 +7,50 @@ defmodule Mydia.Library.PathMapping do
   See `Mydia.Settings.PathMappingConfig` for the configuration model.
   """
 
+  alias Mydia.Library.MountRoots
   alias Mydia.Settings
+
+  # Bound the basename search so a pathological mount tree can't stall the
+  # suggestion. Q3 in the plan flags revisiting this against real costs.
+  @max_scan_depth 6
+
+  @doc """
+  Suggests a remote→local prefix mapping for a reported path Mydia couldn't see.
+
+  Scans the detected mount roots for a directory whose basename matches the
+  reported path's basename. Returns `{:ok, %{remote_prefix, local_prefix}}` only
+  on exactly one match — the single-match gate guards against ambiguity, not
+  against a confidently-wrong match, so callers must present the suggestion for
+  explicit confirmation. Zero or multiple matches return `:none`.
+
+  `roots` defaults to `MountRoots.detect/0`; pass an explicit list in tests.
+  """
+  @spec suggest(String.t(), [String.t()] | nil) :: {:ok, map()} | :none
+  def suggest(reported_path, roots \\ nil)
+
+  def suggest(reported_path, roots) when is_binary(reported_path) do
+    basename = Path.basename(reported_path)
+    roots = roots || MountRoots.detect()
+
+    matches =
+      roots
+      |> Enum.flat_map(&find_dirs_named(&1, basename, @max_scan_depth))
+      |> Enum.uniq()
+
+    case matches do
+      [local_dir] ->
+        {:ok,
+         %{
+           remote_prefix: Path.dirname(reported_path),
+           local_prefix: Path.dirname(local_dir)
+         }}
+
+      _ ->
+        :none
+    end
+  end
+
+  def suggest(_reported_path, _roots), do: :none
 
   @doc """
   Rewrites `path` through the longest matching configured remote prefix.
@@ -40,6 +83,27 @@ defmodule Mydia.Library.PathMapping do
   end
 
   def mount_mismatch?(_), do: false
+
+  defp find_dirs_named(_dir, _name, depth) when depth < 0, do: []
+
+  defp find_dirs_named(dir, name, depth) do
+    case File.ls(dir) do
+      {:ok, entries} ->
+        Enum.flat_map(entries, fn entry ->
+          full = Path.join(dir, entry)
+
+          if File.dir?(full) do
+            here = if entry == name, do: [full], else: []
+            here ++ find_dirs_named(full, name, depth - 1)
+          else
+            []
+          end
+        end)
+
+      _ ->
+        []
+    end
+  end
 
   defp under_prefix?(path, prefix) when is_binary(prefix) do
     path == prefix or String.starts_with?(path, prefix <> "/")
