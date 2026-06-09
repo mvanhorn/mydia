@@ -131,6 +131,13 @@ defmodule Mydia.Downloads do
     to: Mydia.Downloads.History
 
   @doc """
+  Lists distinct reported paths of downloads that failed import with a
+  path-mapping mismatch. Useful as `remote_prefix` autocomplete suggestions.
+  """
+  @spec list_failed_remote_paths() :: [String.t()]
+  defdelegate list_failed_remote_paths, to: Mydia.Downloads.History
+
+  @doc """
   Marks a download as completed by storing the completion time.
   """
   @spec mark_download_completed(Download.t()) ::

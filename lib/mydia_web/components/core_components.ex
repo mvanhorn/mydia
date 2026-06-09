@@ -163,6 +163,10 @@ defmodule MydiaWeb.CoreComponents do
   attr :class, :string, default: nil, doc: "the input class to use over defaults"
   attr :error_class, :string, default: nil, doc: "the input error class to use over defaults"
 
+  attr :hint, :string,
+    default: nil,
+    doc: "helper text shown below the field; use for examples instead of value-like placeholders"
+
   attr :rest, :global,
     include: ~w(accept autocomplete capture cols disabled form list max maxlength min minlength
                 multiple pattern placeholder readonly required rows size step)
@@ -224,6 +228,7 @@ defmodule MydiaWeb.CoreComponents do
           {Phoenix.HTML.Form.options_for_select(@options, @value)}
         </select>
       </label>
+      <.input_hint :if={@hint} errors={@errors}>{@hint}</.input_hint>
       <.error :for={msg <- @errors}>{msg}</.error>
     </div>
     """
@@ -245,6 +250,7 @@ defmodule MydiaWeb.CoreComponents do
           {@rest}
         >{Phoenix.HTML.Form.normalize_value("textarea", @value)}</textarea>
       </label>
+      <.input_hint :if={@hint} errors={@errors}>{@hint}</.input_hint>
       <.error :for={msg <- @errors}>{msg}</.error>
     </div>
     """
@@ -268,8 +274,22 @@ defmodule MydiaWeb.CoreComponents do
           {@rest}
         />
       </label>
+      <.input_hint :if={@hint} errors={@errors}>{@hint}</.input_hint>
       <.error :for={msg <- @errors}>{msg}</.error>
     </div>
+    """
+  end
+
+  # Helper text shown below a field. Hidden when the field has errors so the
+  # error message takes its place rather than stacking.
+  attr :errors, :list, default: []
+  slot :inner_block, required: true
+
+  defp input_hint(assigns) do
+    ~H"""
+    <p :if={@errors == []} class="mt-1.5 text-xs text-base-content/50">
+      {render_slot(@inner_block)}
+    </p>
     """
   end
 

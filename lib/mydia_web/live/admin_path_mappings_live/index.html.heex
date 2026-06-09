@@ -16,7 +16,12 @@
     </div>
 
     <%= if @show_modal do %>
-      <MydiaWeb.AdminPathMappingsLive.Components.path_mapping_modal form={@form} mode={@mode} />
+      <MydiaWeb.AdminPathMappingsLive.Components.path_mapping_modal
+        form={@form}
+        mode={@mode}
+        remote_suggestions={@remote_suggestions}
+        local_suggestions={@local_suggestions}
+      />
     <% end %>
   </div>
 </Layouts.app>

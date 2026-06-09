@@ -131,6 +131,8 @@ defmodule MydiaWeb.AdminPathMappingsLive.Components do
   """
   attr :form, :any, required: true
   attr :mode, :atom, required: true
+  attr :remote_suggestions, :list, default: []
+  attr :local_suggestions, :list, default: []
 
   def path_mapping_modal(assigns) do
     ~H"""
@@ -163,20 +165,42 @@ defmodule MydiaWeb.AdminPathMappingsLive.Components do
           </div>
 
           <div class="space-y-5">
-            <.input
-              field={@form[:remote_prefix]}
-              type="text"
-              label="Remote prefix"
-              placeholder="/downloads/complete"
-              required
-            />
-            <.input
-              field={@form[:local_prefix]}
-              type="text"
-              label="Local prefix"
-              placeholder="/data/torrents/complete"
-              required
-            />
+            <div>
+              <.input
+                field={@form[:remote_prefix]}
+                type="text"
+                label="Remote prefix"
+                placeholder="/downloads/complete"
+                list="remote-prefix-suggestions"
+                autocomplete="off"
+                required
+              />
+              <datalist id="remote-prefix-suggestions">
+                <option :for={path <- @remote_suggestions} value={path}></option>
+              </datalist>
+              <%= if @remote_suggestions != [] do %>
+                <p class="text-xs text-base-content/60 mt-1">
+                  Suggestions come from downloads that failed to import because their reported path could not be mapped.
+                </p>
+              <% end %>
+            </div>
+            <div>
+              <.input
+                field={@form[:local_prefix]}
+                type="text"
+                label="Local prefix"
+                placeholder="/data/torrents/complete"
+                list="local-prefix-suggestions"
+                autocomplete="off"
+                required
+              />
+              <datalist id="local-prefix-suggestions">
+                <option :for={path <- @local_suggestions} value={path}></option>
+              </datalist>
+              <p class="text-xs text-base-content/60 mt-1">
+                As you type, Mydia suggests matching directories on its own filesystem.
+              </p>
+            </div>
           </div>
 
           <%!-- Modal Actions --%>

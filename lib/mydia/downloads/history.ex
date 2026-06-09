@@ -121,6 +121,21 @@ defmodule Mydia.Downloads.History do
     |> Repo.all()
   end
 
+  @doc """
+  Lists the distinct reported paths of downloads that failed import because of
+  a path-mapping mismatch. These are the remote paths Mydia saw but could not
+  translate, making them the most useful suggestions for a `remote_prefix`.
+  """
+  def list_failed_remote_paths do
+    Download
+    |> where([d], not is_nil(d.import_failed_at))
+    |> where([d], d.import_failure_reason == "path_mapping_mismatch")
+    |> where([d], not is_nil(d.import_reported_path))
+    |> select([d], d.import_reported_path)
+    |> distinct(true)
+    |> Repo.all()
+  end
+
   def mark_download_completed(%Download{} = download) do
     download
     |> Download.changeset(%{completed_at: DateTime.utc_now()})

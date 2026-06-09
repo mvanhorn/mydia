@@ -1,6 +1,8 @@
 defmodule MydiaWeb.AdminPathMappingsLive.Index do
   use MydiaWeb, :live_view
 
+  alias Mydia.Downloads
+  alias Mydia.Library.DirectoryBrowser
   alias Mydia.Settings
   alias Mydia.Settings.PathMappingConfig
 
@@ -27,6 +29,8 @@ defmodule MydiaWeb.AdminPathMappingsLive.Index do
      |> assign(:show_modal, true)
      |> assign(:mode, :new)
      |> assign(:editing, nil)
+     |> assign(:remote_suggestions, Downloads.list_failed_remote_paths())
+     |> assign(:local_suggestions, [])
      |> assign(:form, to_form(changeset))}
   end
 
@@ -44,6 +48,8 @@ defmodule MydiaWeb.AdminPathMappingsLive.Index do
        |> assign(:show_modal, true)
        |> assign(:mode, :edit)
        |> assign(:editing, mapping)
+       |> assign(:remote_suggestions, Downloads.list_failed_remote_paths())
+       |> assign(:local_suggestions, DirectoryBrowser.suggest(mapping.local_prefix))
        |> assign(:form, to_form(changeset))}
     end
   end
@@ -61,7 +67,10 @@ defmodule MydiaWeb.AdminPathMappingsLive.Index do
       |> PathMappingConfig.changeset(params)
       |> Map.put(:action, :validate)
 
-    {:noreply, assign(socket, :form, to_form(changeset))}
+    {:noreply,
+     socket
+     |> assign(:form, to_form(changeset))
+     |> assign(:local_suggestions, DirectoryBrowser.suggest(params["local_prefix"]))}
   end
 
   @impl true
@@ -114,6 +123,8 @@ defmodule MydiaWeb.AdminPathMappingsLive.Index do
     socket
     |> assign(:path_mappings, Settings.list_path_mapping_configs())
     |> assign(:show_modal, false)
+    |> assign(:remote_suggestions, [])
+    |> assign(:local_suggestions, [])
   end
 
   defp env_readonly_message do

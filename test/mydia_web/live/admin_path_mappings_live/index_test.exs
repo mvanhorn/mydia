@@ -2,7 +2,7 @@ defmodule MydiaWeb.AdminPathMappingsLive.IndexTest do
   use MydiaWeb.ConnCase, async: false
 
   import Phoenix.LiveViewTest
-  alias Mydia.{Accounts, Settings}
+  alias Mydia.{Accounts, Downloads, Settings}
   alias Mydia.Config.Loader
 
   setup do
@@ -74,6 +74,23 @@ defmodule MydiaWeb.AdminPathMappingsLive.IndexTest do
 
       assert html =~ "can&#39;t be blank" or html =~ "can't be blank"
       assert Settings.list_path_mapping_configs() == []
+    end
+
+    test "remote_prefix autocomplete suggests failed-import reported paths", %{view: view} do
+      {:ok, _download} =
+        Downloads.create_download(%{
+          title: "Some Release",
+          import_failed_at: DateTime.utc_now() |> DateTime.truncate(:second),
+          import_failure_reason: "path_mapping_mismatch",
+          import_reported_path: "/remote/seedbox/complete"
+        })
+
+      view |> element("button", "Add mapping") |> render_click()
+
+      assert has_element?(
+               view,
+               "datalist#remote-prefix-suggestions option[value='/remote/seedbox/complete']"
+             )
     end
 
     test "deletes a DB mapping", %{conn: conn, token: token} do
