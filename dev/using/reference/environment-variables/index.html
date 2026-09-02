@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -31,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.618322db.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -1542,6 +1542,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#import-lists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Import Lists
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#download-clients" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2954,7 +2965,7 @@
   <span class="md-ellipsis">
     
   
-    E2E Testing
+    Browser Testing
   
 
     
@@ -3197,6 +3208,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#import-lists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Import Lists
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#download-clients" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3378,6 +3400,14 @@
 </tr>
 </tbody>
 </table>
+<p>Both must be set to a non-empty value of at least 32 characters, and Mydia
+refuses to start otherwise with an error naming the variable. Set-but-blank
+counts as unset: a zero-length signing key is accepted by the JWT library for
+both signing and verification, which would make tokens forgeable. The 32
+character floor is the one <code>mix phx.gen.secret</code> and <code>mix guardian.gen.secret</code>
+enforce themselves, so any secret produced by the commands above passes.
+<code>GUARDIAN_SECRET_KEY</code> is required in its own right and is never inherited from
+<code>SECRET_KEY_BASE</code>.</p>
 <h2 id="container-configuration">Container Configuration</h2>
 <table>
 <thead>
@@ -3599,7 +3629,7 @@ regardless of what you set here. If you serve Mydia over plain http, set
 <tr>
 <td><code>ENABLE_IMPORT_LISTS</code></td>
 <td>Enable import lists for syncing external lists (TMDB watchlists, popular, etc.)</td>
-<td><code>false</code></td>
+<td><code>true</code></td>
 </tr>
 <tr>
 <td><code>ENABLE_REMOTE_ACCESS</code></td>
@@ -3608,6 +3638,33 @@ regardless of what you set here. If you serve Mydia over plain http, set
 </tr>
 </tbody>
 </table>
+<h2 id="import-lists">Import Lists</h2>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IMPORT_LISTS_ALLOW_PRIVATE_DESTINATIONS</code></td>
+<td>Allow a Custom URL import list to fetch from private, loopback or link-local addresses</td>
+<td><code>false</code></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition warning">
+<p class="admonition-title">Only enable this for a list you host yourself</p>
+<p>A Custom URL list is fetched by the Mydia server, not by your browser, so the
+URL can reach anything the server can reach: other containers, your router,
+a cloud metadata endpoint. Mydia refuses those destinations by default and
+revalidates every redirect hop.</p>
+<p>Set this to <code>true</code> only if you serve the list from your own LAN or container
+network, for example a JSON file on a NAS. It never relaxes the scheme
+allowlist, which is always limited to <code>http</code> and <code>https</code>.</p>
+</div>
 <h2 id="download-clients">Download Clients</h2>
 <p>Configure multiple clients using numbered variables (<code>&lt;N&gt;</code> = 1, 2, 3, etc.):</p>
 <table>
@@ -3673,6 +3730,11 @@ regardless of what you set here. If you serve Mydia over plain http, set
 <td><code>DOWNLOAD_CLIENT_&lt;N&gt;_CATEGORY</code></td>
 <td>Default category</td>
 <td>-</td>
+</tr>
+<tr>
+<td><code>DOWNLOAD_CLIENT_&lt;N&gt;_EXTERNAL_TORRENTS</code></td>
+<td>What to do with torrents Mydia did not add: <code>auto</code>, <code>adopt</code>, <code>category_only</code>, <code>ignore</code>. <code>category_only</code> is not valid for rqbit.</td>
+<td><code>auto</code></td>
 </tr>
 <tr>
 <td><code>DOWNLOAD_CLIENT_&lt;N&gt;_DOWNLOAD_DIRECTORY</code></td>
@@ -4198,10 +4260,10 @@ incompatible 4K file would otherwise ask of it. Also settable under <strong>Admi
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.instant", "navigation.tracking", "navigation.tabs", "navigation.sections", "navigation.indexes", "navigation.top", "navigation.footer", "search.suggest", "search.highlight", "content.code.copy", "content.tabs.link"], "search": "../../../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.instant", "navigation.tracking", "navigation.tabs", "navigation.sections", "navigation.indexes", "navigation.top", "navigation.footer", "search.suggest", "search.highlight", "content.code.copy", "content.tabs.link"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

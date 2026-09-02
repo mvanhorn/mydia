@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -31,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.618322db.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -2921,7 +2921,7 @@
   <span class="md-ellipsis">
     
   
-    E2E Testing
+    Browser Testing
   
 
     
@@ -3430,6 +3430,22 @@ lands in the middle, better than being explicitly unpreferred.</p>
 codecs list only <code>h265</code>, an h264 release is not merely second-best, it is
 unlisted, and it takes a substantially larger hit. Short preference lists are
 strong statements.</p>
+<p>HDR scores a little differently from the other preference lists, because a file
+can legitimately be two formats at once. A Dolby Vision 8.1 file carries a Dolby
+Vision layer on top of an HDR10 base, so it offers both <code>dolby_vision</code> and
+<code>hdr10</code> to the list and takes whichever position scores higher. HDR10+ works the
+same way, offering <code>hdr10</code> alongside <code>hdr10+</code>. List only <code>hdr10</code> and a Dolby
+Vision or HDR10+ file still scores off that entry, at whatever position it
+occupies in your list.</p>
+<p>A file with no HDR at all lands in the middle of that scale, above a file whose
+HDR format you did not list. That ordering is deliberate. If you listed the
+formats you want and HLG is not among them, an HLG file is worse for you than a
+plain SDR one. It looks like a bug the first time you see it, so it is worth
+saying plainly: an absent HDR signal is neutral, the same as an attribute Mydia
+could not determine. Carrying an HDR format you did not list counts against you
+exactly like an unlisted codec or source. That is the soft preference-list
+penalty; the harder <code>require_hdr</code> rule, which zeroes the score outright, is a
+separate mechanism covered further down this page.</p>
 <p>Availability is logarithmic, so seeder counts matter much less than they appear
 to. The difference between fifty and five hundred seeders is a handful of points,
 comparable to a single codec preference. The one sharp effect is having zero
@@ -3718,10 +3734,10 @@ powerful has no equivalent to translate into.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.instant", "navigation.tracking", "navigation.tabs", "navigation.sections", "navigation.indexes", "navigation.top", "navigation.footer", "search.suggest", "search.highlight", "content.code.copy", "content.tabs.link"], "search": "../../../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.instant", "navigation.tracking", "navigation.tabs", "navigation.sections", "navigation.indexes", "navigation.top", "navigation.footer", "search.suggest", "search.highlight", "content.code.copy", "content.tabs.link"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>
